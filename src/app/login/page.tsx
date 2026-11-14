@@ -21,7 +21,7 @@ export default function LoginPage() {
     });
     setBusy(false);
     if (res.ok) {
-      const next = new URLSearchParams(window.location.search).get("next") || "/";
+      const next = new URLSearchParams(window.location.search).get("next") || "/app";
       window.location.href = next.startsWith("/") ? next : "/";
     } else setError("That password isn't right.");
   };
