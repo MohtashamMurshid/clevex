@@ -1,0 +1,361 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * clevex theme — coss ui / shadcn token names, filled with the Cleve design
+ * system: warm "pebble" neutrals, "clay" brand orange, "paper" surfaces and
+ * the sun-yellow mascot.
+ */
+:root {
+  --pebble-0: #ffffff;
+  --pebble-50: #fbfaf9;
+  --pebble-100: #f6f5f3;
+  --pebble-150: #eeecea;
+  --pebble-200: #e7e5e2;
+  --pebble-250: #dedcd9;
+  --pebble-300: #d6d4d1;
+  --pebble-400: #a3a09d;
+  --pebble-500: #767370;
+  --pebble-600: #55524f;
+  --pebble-700: #423f3d;
+  --pebble-750: #353230;
+  --pebble-800: #282624;
+  --pebble-850: #201e1c;
+  --pebble-900: #191715;
+  --pebble-925: #131110;
+  --pebble-950: #0b0a09;
+
+  --clay-50: #fcf3ee;
+  --clay-100: #f9e4d8;
+  --clay-200: #f2c7b0;
+  --clay-300: #e9a37f;
+  --clay-400: #df8657;
+  --clay-500: #d16e3f;
+  --clay-600: #b75a2f;
+  --clay-700: #944826;
+  --clay-800: #713922;
+  --clay-900: #522c1c;
+
+  --paper-100: #f8f5ef;
+  --paper-200: #f4f0e7;
+  --paper-300: #e7e2d8;
+  --paper-900: #1c1a17;
+
+  --sun: #fbc627;
+  --radius: 0.625rem;
+
+  /* shadcn / coss semantic tokens */
+  --background: var(--pebble-100);
+  --foreground: var(--pebble-900);
+  --card: var(--pebble-0);
+  --card-foreground: var(--pebble-900);
+  --popover: var(--pebble-0);
+  --popover-foreground: var(--pebble-900);
+  --primary: var(--pebble-900);
+  --primary-foreground: var(--pebble-50);
+  --secondary: color-mix(in srgb, var(--pebble-900) 5%, transparent);
+  --secondary-foreground: var(--pebble-900);
+  --muted: color-mix(in srgb, var(--pebble-900) 4%, transparent);
+  --muted-foreground: var(--pebble-500);
+  --accent: color-mix(in srgb, var(--pebble-900) 5%, transparent);
+  --accent-foreground: var(--pebble-900);
+  --destructive: #d4472b;
+  --destructive-foreground: #b4351d;
+  --info: #3b7bd8;
+  --info-foreground: #2a5ea8;
+  --success: #3f8f5a;
+  --success-foreground: #2f6e44;
+  --warning: #d99a12;
+  --warning-foreground: #946707;
+  --border: color-mix(in srgb, var(--pebble-900) 9%, transparent);
+  --input: color-mix(in srgb, var(--pebble-900) 12%, transparent);
+  --ring: var(--clay-400);
+  --code: var(--pebble-50);
+  --code-foreground: var(--foreground);
+  --code-highlight: color-mix(in srgb, var(--pebble-900) 4%, transparent);
+  --chart-1: var(--clay-500);
+  --chart-2: #2f8f86;
+  --chart-3: #3b5c8f;
+  --chart-4: var(--sun);
+  --chart-5: var(--clay-300);
+
+  --sidebar: var(--pebble-150);
+  --sidebar-foreground: var(--pebble-700);
+  --sidebar-primary: var(--pebble-900);
+  --sidebar-primary-foreground: var(--pebble-50);
+  --sidebar-accent: color-mix(in srgb, var(--pebble-900) 6%, transparent);
+  --sidebar-accent-foreground: var(--pebble-900);
+  --sidebar-border: color-mix(in srgb, var(--pebble-900) 7%, transparent);
+  --sidebar-ring: var(--clay-400);
+
+  /* Cleve extras */
+  --brand: var(--clay-500);
+  --brand-strong: var(--clay-600);
+  --brand-subtle: var(--clay-100);
+  --brand-faint: var(--clay-50);
+  --brand-foreground: var(--pebble-0);
+  --paper: var(--paper-200);
+  --panel: var(--pebble-0);
+  --shadow-color: 30 20% 20%;
+  color-scheme: light;
+}
+
+.dark {
+  --background: var(--pebble-925);
+  --foreground: var(--pebble-100);
+  --card: var(--pebble-900);
+  --card-foreground: var(--pebble-100);
+  --popover: var(--pebble-850);
+  --popover-foreground: var(--pebble-100);
+  --primary: var(--pebble-100);
+  --primary-foreground: var(--pebble-900);
+  --secondary: color-mix(in srgb, var(--pebble-0) 6%, transparent);
+  --secondary-foreground: var(--pebble-100);
+  --muted: color-mix(in srgb, var(--pebble-0) 4%, transparent);
+  --muted-foreground: var(--pebble-400);
+  --accent: color-mix(in srgb, var(--pebble-0) 6%, transparent);
+  --accent-foreground: var(--pebble-100);
+  --destructive: #e8664a;
+  --destructive-foreground: #f08a72;
+  --info: #5b95e6;
+  --info-foreground: #8ab4f0;
+  --success: #57a873;
+  --success-foreground: #86c596;
+  --warning: #e3ac2c;
+  --warning-foreground: #edc35e;
+  --border: color-mix(in srgb, var(--pebble-0) 8%, transparent);
+  --input: color-mix(in srgb, var(--pebble-0) 11%, transparent);
+  --ring: var(--clay-400);
+  --code: var(--pebble-850);
+  --code-highlight: color-mix(in srgb, var(--pebble-0) 4%, transparent);
+
+  --sidebar: var(--pebble-950);
+  --sidebar-foreground: var(--pebble-300);
+  --sidebar-primary: var(--pebble-100);
+  --sidebar-primary-foreground: var(--pebble-900);
+  --sidebar-accent: color-mix(in srgb, var(--pebble-0) 6%, transparent);
+  --sidebar-accent-foreground: var(--pebble-100);
+  --sidebar-border: color-mix(in srgb, var(--pebble-0) 6%, transparent);
+
+  --brand: var(--clay-400);
+  --brand-strong: var(--clay-300);
+  --brand-subtle: var(--clay-900);
+  --brand-faint: color-mix(in srgb, var(--clay-900) 45%, transparent);
+  --brand-foreground: var(--pebble-950);
+  --paper: var(--paper-900);
+  --panel: var(--pebble-900);
+  --shadow-color: 0 0% 0%;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-code: var(--code);
+  --color-code-foreground: var(--code-foreground);
+  --color-code-highlight: var(--code-highlight);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-faint: var(--brand-faint);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-sun: var(--sun);
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --shadow-soft: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 4px 16px -4px hsl(var(--shadow-color) / 0.08);
+  --shadow-pop: 0 2px 6px hsl(var(--shadow-color) / 0.08), 0 24px 48px -12px hsl(var(--shadow-color) / 0.22);
+
+  --animate-skeleton: skeleton 2s -1s infinite linear;
+  --animate-caret-blink: 1s ease-out infinite caret-blink;
+  --animate-toast-success-odd: toast-success-odd 0.32s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-toast-success-even: toast-success-even 0.32s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-toast-error-odd: toast-error-odd 0.28s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-toast-error-even: toast-error-even 0.28s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-fade-in: fade-in 160ms ease-out;
+  --animate-pop-in: pop-in 200ms cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  --animate-blob: blob-bob 2.4s ease-in-out infinite;
+
+  @keyframes skeleton {
+    to { background-position: -200% 0; }
+  }
+  @keyframes caret-blink {
+    0%, 70%, to { opacity: 1; }
+    20%, 50% { opacity: 0; }
+  }
+  @keyframes toast-success-odd {
+    0% { scale: 1; } 30% { scale: 1.025; } 60% { scale: 0.99; } 100% { scale: 1; }
+  }
+  @keyframes toast-success-even {
+    0% { scale: 1; } 30% { scale: 1.025; } 60% { scale: 0.99; } 100% { scale: 1; }
+  }
+  @keyframes toast-error-odd {
+    0% { translate: 0 0; } 25% { translate: -3px 0; } 50% { translate: 3px 0; } 75% { translate: -3px 0; } 100% { translate: 0 0; }
+  }
+  @keyframes toast-error-even {
+    0% { translate: 0 0; } 25% { translate: -3px 0; } 50% { translate: 3px 0; } 75% { translate: -3px 0; } 100% { translate: 0 0; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(6px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes blob-bob {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-2px) rotate(-2deg); }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  code, kbd, samp, pre {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--brand) 26%, transparent);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 16%, transparent) transparent;
+  }
+}
+
+/* ---------- Markdown inside chat ---------- */
+.prose-chat {
+  font-size: 0.875rem;
+  line-height: 1.62;
+  overflow-wrap: anywhere;
+}
+.prose-chat > * + * { margin-top: 0.6em; }
+.prose-chat h1, .prose-chat h2, .prose-chat h3 { font-weight: 600; margin-top: 1em; line-height: 1.3; }
+.prose-chat h1 { font-size: 1.05rem; }
+.prose-chat h2 { font-size: 1rem; }
+.prose-chat h3 { font-size: 0.925rem; }
+.prose-chat ul { list-style: disc; padding-left: 1.2em; }
+.prose-chat ol { list-style: decimal; padding-left: 1.3em; }
+.prose-chat li + li { margin-top: 0.2em; }
+.prose-chat a { color: var(--brand-strong); text-decoration: underline; text-underline-offset: 2px; }
+.prose-chat strong { font-weight: 600; }
+.prose-chat blockquote { border-left: 2px solid var(--border); padding-left: 0.75em; color: var(--muted-foreground); }
+.prose-chat code {
+  font-size: 0.8em;
+  background: var(--muted);
+  border-radius: 0.3rem;
+  padding: 0.1em 0.35em;
+}
+.prose-chat pre {
+  background: var(--code);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.7em 0.85em;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.prose-chat pre code { background: none; padding: 0; font-size: inherit; }
+.prose-chat table { border-collapse: collapse; font-size: 0.8rem; }
+.prose-chat th, .prose-chat td { border: 1px solid var(--border); padding: 0.3em 0.55em; }
+.prose-chat .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.2em 0; }
+
+/* ---------- CodeMirror ---------- */
+.cm-editor { height: 100%; }
+.cm-editor.cm-focused { outline: none !important; }
+.cm-scroller { font-family: var(--font-geist-mono), ui-monospace, monospace !important; line-height: 1.7 !important; }
+
+/* ---------- PDF ---------- */
+.pdf-page {
+  background: #fff;
+  box-shadow: 0 1px 2px hsl(30 20% 20% / 0.08), 0 10px 30px -12px hsl(30 20% 20% / 0.28);
+  border-radius: 2px;
+}
+
+@keyframes blink-eyes {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.08); }
+}
+
+/* LaTeX syntax colours */
+:root {
+  --cm-cmd: var(--clay-600);
+  --cm-math: #2f62a3;
+  --cm-env: #2c7a5c;
+  --cm-comment: var(--pebble-400);
+  --cm-bracket: var(--pebble-500);
+  --cm-number: #9a5b13;
+}
+.dark {
+  --cm-cmd: var(--clay-300);
+  --cm-math: #8ab4f0;
+  --cm-env: #7fcfa8;
+  --cm-comment: var(--pebble-500);
+  --cm-bracket: var(--pebble-400);
+  --cm-number: #e9b872;
+}
+
+@keyframes progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
