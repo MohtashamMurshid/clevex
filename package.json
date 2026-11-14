@@ -2,6 +2,7 @@
   "name": "clevex",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "node scripts/copy-pdf-worker.mjs && next dev",
     "build": "node scripts/copy-pdf-worker.mjs && next build",
