@@ -1,40 +1,18 @@
 "use client";
 
-import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { ChatThread, Project, ProjectFile } from "./types";
+/**
+ * Project data, stored in Convex and scoped to the signed-in user.
+ * Text files are stored inline; binary files (figures) and chat images go to
+ * Convex file storage and are fetched back as base64 for compiling.
+ */
 
-interface ClevexDB extends DBSchema {
-  projects: { key: string; value: Project };
-  files: {
-    key: [string, string];
-    value: ProjectFile & { projectId: string };
-    indexes: { byProject: string };
-  };
-  threads: {
-    key: string;
-    value: ChatThread;
-    indexes: { byProject: string };
-  };
-  pdfs: { key: string; value: { projectId: string; pdf: string; at: number } };
-}
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { convex } from "./convex";
+import type { ChatImage, ChatThread, Project, ProjectFile } from "./types";
+import { base64ToBytes, bytesToBase64 } from "./zip";
 
-let dbPromise: Promise<IDBPDatabase<ClevexDB>> | null = null;
-
-function db() {
-  if (!dbPromise) {
-    dbPromise = openDB<ClevexDB>("clevex", 1, {
-      upgrade(d) {
-        d.createObjectStore("projects", { keyPath: "id" });
-        const files = d.createObjectStore("files", { keyPath: ["projectId", "path"] });
-        files.createIndex("byProject", "projectId");
-        const threads = d.createObjectStore("threads", { keyPath: "id" });
-        threads.createIndex("byProject", "projectId");
-        d.createObjectStore("pdfs", { keyPath: "projectId" });
-      },
-    });
-  }
-  return dbPromise;
-}
+export { loadPdf, savePdf } from "./local-db";
 
 export function uid(prefix = "") {
   const rand = crypto.getRandomValues(new Uint8Array(9));
@@ -47,107 +25,192 @@ export function uid(prefix = "") {
   );
 }
 
-export async function listProjects(): Promise<Project[]> {
-  const all = await (await db()).getAll("projects");
-  return all.sort((a, b) => b.updatedAt - a.updatedAt);
+const pid = (id: string) => id as Id<"projects">;
+
+// ---------- Storage helpers ----------
+
+async function upload(base64: string, mime: string): Promise<Id<"_storage">> {
+  const url = await convex.mutation(api.files.generateUploadUrl, {});
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": mime || "application/octet-stream" },
+    body: base64ToBytes(base64) as BlobPart,
+  });
+  if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+  const { storageId } = (await res.json()) as { storageId: Id<"_storage"> };
+  return storageId;
 }
 
-export async function getProject(id: string) {
-  return (await db()).get("projects", id);
+const blobCache = new Map<string, Promise<string>>();
+
+/** Download a stored blob as base64 (cached per storage id — blobs are immutable). */
+function fetchBase64(storageId: string, url: string): Promise<string> {
+  let p = blobCache.get(storageId);
+  if (!p) {
+    p = fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Download failed (${r.status})`);
+        return r.arrayBuffer();
+      })
+      .then((buf) => bytesToBase64(new Uint8Array(buf)));
+    blobCache.set(storageId, p);
+    p.catch(() => blobCache.delete(storageId));
+  }
+  return p;
+}
+
+// ---------- Projects ----------
+
+export async function listProjects(): Promise<Project[]> {
+  return convex.query(api.projects.list, {});
+}
+
+export async function getProject(id: string): Promise<Project | null> {
+  return convex.query(api.projects.get, { id });
 }
 
 export async function saveProject(p: Project) {
-  await (await db()).put("projects", p);
+  await convex.mutation(api.projects.update, {
+    id: pid(p.id),
+    name: p.name,
+    mainFile: p.mainFile,
+    compiler: p.compiler,
+  });
 }
 
 export async function touchProject(id: string) {
-  const d = await db();
-  const p = await d.get("projects", id);
-  if (p) await d.put("projects", { ...p, updatedAt: Date.now() });
+  await convex.mutation(api.projects.touch, { id: pid(id) });
 }
 
 export async function deleteProject(id: string) {
-  const d = await db();
-  const tx = d.transaction(["projects", "files", "threads", "pdfs"], "readwrite");
-  await tx.objectStore("projects").delete(id);
-  for (const key of await tx.objectStore("files").index("byProject").getAllKeys(id)) {
-    await tx.objectStore("files").delete(key);
-  }
-  for (const key of await tx.objectStore("threads").index("byProject").getAllKeys(id)) {
-    await tx.objectStore("threads").delete(key);
-  }
-  await tx.objectStore("pdfs").delete(id);
-  await tx.done;
+  await convex.mutation(api.projects.remove, { id: pid(id) });
 }
 
-export async function listFiles(projectId: string): Promise<ProjectFile[]> {
-  const rows = await (await db()).getAllFromIndex("files", "byProject", projectId);
-  return rows
-    .map((row) => {
-      const { projectId, ...f } = row;
-      void projectId;
-      return f;
-    })
-    .sort((a, b) => a.path.localeCompare(b.path));
+export async function duplicateProject(id: string) {
+  return convex.mutation(api.projects.duplicate, { id: pid(id) });
 }
 
-export async function putFile(projectId: string, file: ProjectFile) {
-  await (await db()).put("files", { ...file, projectId });
-}
-
-export async function deleteFile(projectId: string, path: string) {
-  await (await db()).delete("files", [projectId, path]);
-}
-
-export async function renameFile(projectId: string, from: string, to: string) {
-  const d = await db();
-  const f = await d.get("files", [projectId, from]);
-  if (!f) return;
-  await d.delete("files", [projectId, from]);
-  await d.put("files", { ...f, path: to, updatedAt: Date.now() });
-}
-
-export async function listThreads(projectId: string): Promise<ChatThread[]> {
-  const rows = await (await db()).getAllFromIndex("threads", "byProject", projectId);
-  return rows.sort((a, b) => b.updatedAt - a.updatedAt);
-}
-
-export async function saveThread(t: ChatThread) {
-  await (await db()).put("threads", t);
-}
-
-export async function deleteThread(id: string) {
-  await (await db()).delete("threads", id);
-}
-
-export async function savePdf(projectId: string, pdf: string) {
-  await (await db()).put("pdfs", { projectId, pdf, at: Date.now() });
-}
-
-export async function loadPdf(projectId: string) {
-  return (await (await db()).get("pdfs", projectId))?.pdf;
-}
+type NewFile = { path: string; content?: string; data?: string; mime?: string };
 
 export async function createProject(opts: {
   name: string;
   template: string;
-  files: { path: string; content?: string; data?: string; mime?: string }[];
+  files: NewFile[];
   mainFile?: string;
+  compiler?: Project["compiler"];
 }): Promise<Project> {
-  const now = Date.now();
-  const project: Project = {
-    id: uid("p_"),
+  const files = await Promise.all(
+    opts.files.map(async (f) =>
+      f.content !== undefined
+        ? { path: f.path, content: f.content }
+        : { path: f.path, storageId: await upload(f.data ?? "", f.mime ?? ""), mime: f.mime },
+    ),
+  );
+  const id = await convex.mutation(api.projects.create, {
     name: opts.name,
-    mainFile: opts.mainFile ?? "main.tex",
-    createdAt: now,
-    updatedAt: now,
-    accent: Math.floor(Math.random() * 6),
     template: opts.template,
-    compiler: "pdflatex",
-  };
-  await saveProject(project);
-  for (const f of opts.files) {
-    await putFile(project.id, { ...f, updatedAt: now });
-  }
+    mainFile: opts.mainFile ?? "main.tex",
+    compiler: opts.compiler,
+    files,
+  });
+  const project = await getProject(id);
+  if (!project) throw new Error("Project was not created");
   return project;
+}
+
+// ---------- Files ----------
+
+export async function listFiles(projectId: string): Promise<ProjectFile[]> {
+  const rows = await convex.query(api.files.list, { projectId: pid(projectId) });
+  const files = await Promise.all(
+    rows.map(async (f): Promise<ProjectFile> => {
+      if (f.content !== undefined || !f.storageId || !f.url) {
+        return { path: f.path, content: f.content ?? "", updatedAt: f.updatedAt };
+      }
+      return {
+        path: f.path,
+        mime: f.mime,
+        storageId: f.storageId,
+        data: await fetchBase64(f.storageId, f.url),
+        updatedAt: f.updatedAt,
+      };
+    }),
+  );
+  return files.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+export async function putFile(projectId: string, file: ProjectFile) {
+  if (file.content !== undefined) {
+    await convex.mutation(api.files.put, { projectId: pid(projectId), path: file.path, content: file.content });
+    return file;
+  }
+  const storageId = (file.storageId as Id<"_storage"> | undefined) ?? (await upload(file.data ?? "", file.mime ?? ""));
+  await convex.mutation(api.files.put, { projectId: pid(projectId), path: file.path, storageId, mime: file.mime });
+  return { ...file, storageId };
+}
+
+export async function deleteFile(projectId: string, path: string) {
+  await convex.mutation(api.files.remove, { projectId: pid(projectId), path });
+}
+
+export async function renameFile(projectId: string, from: string, to: string) {
+  await convex.mutation(api.files.rename, { projectId: pid(projectId), from, to });
+}
+
+// ---------- Chat threads ----------
+
+export async function listThreads(projectId: string): Promise<ChatThread[]> {
+  const rows = await convex.query(api.threads.list, { projectId: pid(projectId) });
+  return rows.map((t) => ({
+    id: t.id,
+    projectId: t.projectId,
+    title: t.title,
+    updatedAt: t.updatedAt,
+    messages: t.messages.map((m) => ({
+      ...m,
+      images: m.images?.map((img): ChatImage => ({ mime: img.mime, name: img.name, storageId: img.storageId, url: img.url })),
+    })),
+  }));
+}
+
+/**
+ * Persist a thread. New images are uploaded first; the returned thread carries
+ * their storage ids so later saves don't upload them again.
+ */
+export async function saveThread(t: ChatThread): Promise<ChatThread> {
+  const messages = await Promise.all(
+    t.messages.map(async (m) => {
+      if (!m.images?.length) return m;
+      const images = await Promise.all(
+        m.images.map(async (img) =>
+          img.storageId || !img.data ? img : { ...img, storageId: await upload(img.data, img.mime) },
+        ),
+      );
+      return { ...m, images };
+    }),
+  );
+  const wire = messages.map((m) => ({
+    id: m.id,
+    role: m.role,
+    text: m.text,
+    createdAt: m.createdAt,
+    ...(m.thinking ? { thinking: m.thinking } : {}),
+    ...(m.model ? { model: m.model } : {}),
+    ...(m.provider ? { provider: m.provider } : {}),
+    ...(m.error ? { error: m.error } : {}),
+    ...(m.applied ? { applied: m.applied } : {}),
+    ...(m.images?.length
+      ? {
+          images: m.images
+            .filter((i) => i.storageId)
+            .map((i) => ({ mime: i.mime, storageId: i.storageId as Id<"_storage">, ...(i.name ? { name: i.name } : {}) })),
+        }
+      : {}),
+  }));
+  await convex.mutation(api.threads.save, { key: t.id, projectId: pid(t.projectId), title: t.title, messages: wire });
+  return { ...t, messages };
+}
+
+export async function deleteThread(id: string) {
+  await convex.mutation(api.threads.remove, { key: id });
 }

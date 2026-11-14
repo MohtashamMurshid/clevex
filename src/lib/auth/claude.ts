@@ -49,7 +49,7 @@ export async function completeClaudeLogin(input: string) {
   if (parsed.state && parsed.state !== pending.state) {
     throw new Error("That code belongs to a different sign-in attempt. Start again.");
   }
-  const res = await fetch("/api/auth/claude/token", {
+  const res = await fetch("/api/providers/claude/token", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -132,7 +132,7 @@ export async function ensureClaude(): Promise<ClaudeCredential> {
   }
   refreshing ??= (async () => {
     try {
-      const res = await fetch("/api/auth/claude/token", {
+      const res = await fetch("/api/providers/claude/token", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ grant: "refresh_token", refreshToken: cred.refreshToken }),

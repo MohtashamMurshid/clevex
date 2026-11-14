@@ -10,7 +10,7 @@ const FEATURES = [
   { icon: Wrench, title: "Fix with AI", body: "One click sends the error log to the model and applies the fix." },
   { icon: BookMarked, title: "arXiv citations", body: "Search papers and drop the BibTeX straight into your .bib." },
   { icon: Camera, title: "Photo to LaTeX", body: "Paste a whiteboard photo. Get equations back." },
-  { icon: FolderLock, title: "Yours, locally", body: "Projects live in your browser. Export a .zip any time." },
+  { icon: FolderLock, title: "Synced to your account", body: "Pick up on any device. Export a .zip any time." },
 ];
 
 const FAQ = [
@@ -20,7 +20,7 @@ const FAQ = [
   },
   {
     q: "Where are my papers stored?",
-    a: "In your browser. Nothing is saved on a server. Export a project as a .zip whenever you want a copy.",
+    a: "In your clevex account, so they sync across devices. Your ChatGPT and Claude tokens never leave your browser. Export a project as a .zip whenever you want a copy.",
   },
   {
     q: "Do I need LaTeX installed?",
@@ -49,6 +49,9 @@ export function Landing() {
             <a href="#faq" className="hidden text-sm text-white/85 hover:text-white sm:inline">
               FAQ
             </a>
+            <Link href="/sign-in" className="hidden text-sm text-white/85 hover:text-white sm:inline">
+              Sign in
+            </Link>
             <Link
               href="/app"
               className="rounded-lg bg-[#323753] px-4 py-2.5 font-medium text-sm text-white shadow-sm transition-colors hover:bg-[#262a42]"
