@@ -1,22 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  BookOpenText,
-  Copy,
-  FileUp,
-  MoreHorizontal,
-  PenLine,
-  Plus,
-  Presentation,
-  Sparkles,
-  Trash2,
-  FileText,
-  NotebookPen,
-} from "lucide-react";
-import { CleveMark, ProviderGlyph, Wordmark } from "@/components/brand";
+import { ChevronDown, Copy, FileUp, MoreHorizontal, PenLine, Plus, Trash2 } from "lucide-react";
+import { CleveMark } from "@/components/brand";
 import { ConnectDialog, ConnectionPills } from "@/components/connect-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -25,28 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
-import { useCredentials } from "@/lib/auth/store";
 import { createProject, deleteProject, listFiles, listProjects, saveProject } from "@/lib/db";
 import { TEMPLATES } from "@/lib/templates";
 import type { Project, ProviderId } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { guessMainFile, readUploads } from "@/lib/zip";
-
-const TEMPLATE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  paper: FileText,
-  blank: PenLine,
-  notes: NotebookPen,
-  beamer: Presentation,
-};
-
-const ACCENTS = [
-  "from-[#f9e4d8] to-[#f2c7b0] dark:from-[#522c1c] dark:to-[#713922]",
-  "from-[#fbeec2] to-[#f6dc8b] dark:from-[#4a3c12] dark:to-[#5f4b12]",
-  "from-[#e3ece3] to-[#c9dccb] dark:from-[#1d2c21] dark:to-[#2a3f2f]",
-  "from-[#e2e9f3] to-[#c8d6ea] dark:from-[#1b2533] dark:to-[#26354b]",
-  "from-[#eee8f3] to-[#dccfe8] dark:from-[#2a2133] dark:to-[#3a2c47]",
-  "from-[#eeecea] to-[#dedcd9] dark:from-[#282624] dark:to-[#353230]",
-];
 
 function timeAgo(t: number) {
   const s = Math.round((Date.now() - t) / 1000);
@@ -60,13 +30,26 @@ function timeAgo(t: number) {
   return new Date(t).toLocaleDateString();
 }
 
+/** A tiny paper thumbnail. */
+function PagePreview({ title }: { title: string }) {
+  return (
+    <div className="h-full rounded-t-[3px] bg-white px-4 pt-4 shadow-[0_6px_20px_-10px_rgba(60,40,20,0.35)]">
+      <div className="truncate text-center font-serif text-[11px] text-neutral-800">{title}</div>
+      <div className="mx-auto mt-1 h-[3px] w-1/4 rounded-full bg-neutral-300" />
+      <div className="mt-3 space-y-[5px]">
+        {[100, 94, 100, 88, 97, 72].map((w, i) => (
+          <div key={i} className="h-[3px] rounded-full bg-neutral-200" style={{ width: `${w}%` }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard() {
   const router = useRouter();
-  const creds = useCredentials();
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [connect, setConnect] = useState<{ open: boolean; provider: ProviderId }>({ open: false, provider: "chatgpt" });
   const [renaming, setRenaming] = useState<Project | null>(null);
-  const [creating, setCreating] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(() => listProjects().then(setProjects), []);
@@ -75,13 +58,8 @@ export function Dashboard() {
   }, [refresh]);
 
   const newFromTemplate = async (id: string) => {
-    setCreating(id);
     const t = TEMPLATES.find((x) => x.id === id)!;
-    const p = await createProject({
-      name: id === "blank" ? "Untitled document" : t.name,
-      template: id,
-      files: t.files,
-    });
+    const p = await createProject({ name: id === "blank" ? "Untitled" : t.name, template: id, files: t.files });
     router.push(`/p/${p.id}`);
   };
 
@@ -90,9 +68,8 @@ export function Dashboard() {
     try {
       const files = await readUploads(list);
       if (!files.length) throw new Error("No files found");
-      const main = guessMainFile(files);
-      const first = list[0].name.replace(/\.(zip|tex)$/i, "");
-      const p = await createProject({ name: first || "Imported project", template: "import", files, mainFile: main });
+      const name = list[0].name.replace(/\.(zip|tex)$/i, "") || "Imported project";
+      const p = await createProject({ name, template: "import", files, mainFile: guessMainFile(files) });
       router.push(`/p/${p.id}`);
     } catch (e) {
       toastManager.add({ type: "error", title: "Import failed", description: e instanceof Error ? e.message : String(e) });
@@ -105,222 +82,113 @@ export function Dashboard() {
     refresh();
   };
 
-  const connectedCount = Number(!!creds.chatgpt) + Number(!!creds.claude);
-
   return (
     <div className="min-h-dvh bg-background">
-      <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Wordmark className="text-[17px]" />
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:block">
-              <ConnectionPills onOpen={(provider) => setConnect({ open: true, provider })} />
-            </div>
-            <ThemeToggle />
-          </div>
+      <header className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
+        <Link href="/" className="flex items-center gap-2 font-semibold text-[17px] tracking-[-0.02em]">
+          <CleveMark className="h-6 w-auto" />
+          clevex
+        </Link>
+        <div className="flex items-center gap-2">
+          <ConnectionPills onOpen={(provider) => setConnect({ open: true, provider })} />
+          <ThemeToggle />
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
-        {/* Hero */}
-        <section className="relative grid gap-8 pt-12 pb-10 sm:pt-16 md:grid-cols-[1.25fr_1fr] md:items-end">
-          <div>
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-muted-foreground text-xs shadow-xs/5">
-              <Sparkles className="size-3.5 text-brand" /> A cleave.ai side project
-            </p>
-            <h1 className="font-serif text-[2.6rem] leading-[1.05] tracking-[-0.02em] sm:text-[3.4rem]">
-              Write papers with the AI <span className="text-brand italic">you already pay for</span>.
-            </h1>
-            <p className="mt-4 max-w-xl text-[15px] text-muted-foreground leading-relaxed">
-              clevex is a LaTeX workspace with GPT and Claude built in. Draft, fix compile errors, find citations and
-              turn whiteboard photos into equations, all on your own ChatGPT and Claude plans.
-            </p>
-            <div className="mt-6 flex flex-wrap items-center gap-2.5">
-              <Button variant="brand" size="lg" loading={creating === "paper"} onClick={() => newFromTemplate("paper")}>
-                <Plus /> New paper
-              </Button>
-              <Button variant="outline" size="lg" onClick={() => fileInput.current?.click()}>
-                <FileUp /> Import .zip or .tex
-              </Button>
-              <input
-                ref={fileInput}
-                type="file"
-                multiple
-                accept=".zip,.tex,.bib,.cls,.sty,.png,.jpg,.jpeg,.pdf"
-                className="hidden"
-                onChange={(e) => {
-                  importFiles(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-            </div>
+      <main className="mx-auto max-w-5xl px-4 pt-8 pb-24 sm:px-6 sm:pt-12">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-semibold text-2xl tracking-[-0.02em]">Projects</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => fileInput.current?.click()}>
+              <FileUp /> Import
+            </Button>
+            <Menu>
+              <MenuTrigger render={<Button variant="brand" />}>
+                <Plus /> New <ChevronDown className="opacity-70" />
+              </MenuTrigger>
+              <MenuPopup align="end" className="w-56">
+                {TEMPLATES.map((t) => (
+                  <MenuItem key={t.id} onClick={() => newFromTemplate(t.id)}>
+                    {t.name}
+                  </MenuItem>
+                ))}
+              </MenuPopup>
+            </Menu>
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              accept=".zip,.tex,.bib,.cls,.sty,.png,.jpg,.jpeg,.pdf"
+              className="hidden"
+              onChange={(e) => {
+                importFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
           </div>
+        </div>
 
-          {/* Connect card */}
-          <div className="relative overflow-hidden rounded-2xl border bg-card p-5 shadow-soft">
-            <CleveMark className="absolute top-4 right-4 h-11 w-auto rotate-6" blink />
-            <div className="font-medium text-sm">Your models</div>
-            <p className="mt-1 max-w-[16rem] text-muted-foreground text-xs">
-              {connectedCount === 2
-                ? "Both subscriptions are connected. Pick any model from the chat panel."
-                : "Connect at least one subscription to turn on the AI features."}
-            </p>
-            <div className="mt-4 space-y-2">
-              {(["chatgpt", "claude"] as const).map((p) => {
-                const on = !!creds[p];
-                return (
-                  <button
-                    type="button"
-                    key={p}
-                    onClick={() => setConnect({ open: true, provider: p })}
-                    className="flex w-full items-center gap-3 rounded-xl border bg-background/60 px-3 py-2.5 text-left transition-colors hover:bg-accent"
-                  >
-                    <span className="grid size-8 place-items-center rounded-lg border bg-card">
-                      <ProviderGlyph provider={p} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-medium text-sm">{p === "chatgpt" ? "ChatGPT" : "Claude"}</span>
-                      <span className="block truncate text-muted-foreground text-xs">
-                        {on
-                          ? (p === "chatgpt" ? creds.chatgpt?.email : creds.claude?.kind === "claude-oauth" ? creds.claude.email : "API key") ||
-                            "Connected"
-                          : p === "chatgpt"
-                            ? "Plus, Pro or Business"
-                            : "Pro or Max"}
-                      </span>
-                    </span>
-                    {on ? (
-                      <span className="rounded-full bg-success/12 px-2 py-0.5 font-medium text-[11px] text-success-foreground">
-                        Connected
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 font-medium text-brand-strong text-xs">
-                        Connect <ArrowRight className="size-3" />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+        {projects === null ? (
+          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="aspect-[4/3] rounded-xl" />
+            ))}
           </div>
-        </section>
-
-        {/* Templates */}
-        <section className="mt-2">
-          <h2 className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-[0.08em]">Start from a template</h2>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {TEMPLATES.map((t) => {
-              const Icon = TEMPLATE_ICONS[t.id] ?? FileText;
-              return (
-                <button
-                  type="button"
-                  key={t.id}
-                  onClick={() => newFromTemplate(t.id)}
-                  disabled={!!creating}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border bg-card text-left shadow-xs/5 transition-all hover:-translate-y-0.5 hover:shadow-soft disabled:opacity-60"
-                >
-                  <div className="relative h-28 bg-paper px-5 pt-4">
-                    <div className="mx-auto h-full max-w-[9rem] rounded-t-md bg-white px-3 pt-3 shadow-[0_8px_24px_-12px_rgba(60,40,20,0.35)] transition-transform group-hover:-translate-y-1">
-                      <div className="mx-auto h-1.5 w-2/3 rounded-full bg-neutral-800/80" />
-                      <div className="mx-auto mt-1.5 h-1 w-1/3 rounded-full bg-neutral-400/70" />
-                      <div className="mt-3 space-y-1">
-                        {[92, 100, 84, 96, 70].map((w, i) => (
-                          <div key={i} className="h-[3px] rounded-full bg-neutral-300" style={{ width: `${w}%` }} />
-                        ))}
-                      </div>
-                    </div>
+        ) : projects.length === 0 ? (
+          <div className="mt-8">
+            <p className="text-muted-foreground text-sm">Start from a template.</p>
+            <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+              {TEMPLATES.map((t) => (
+                <button type="button" key={t.id} onClick={() => newFromTemplate(t.id)} className="group text-left">
+                  <div className="aspect-[4/3] overflow-hidden rounded-xl border bg-paper px-5 pt-5 transition-transform group-hover:-translate-y-0.5">
+                    <PagePreview title={t.name} />
                   </div>
-                  <div className="flex items-start gap-2.5 p-3.5">
-                    <Icon className="mt-0.5 size-4 shrink-0 text-brand" />
-                    <div>
-                      <div className="font-medium text-sm">{t.name}</div>
-                      <div className="mt-0.5 line-clamp-2 text-muted-foreground text-xs">{t.blurb}</div>
-                    </div>
-                  </div>
+                  <div className="mt-2.5 font-medium text-sm">{t.name}</div>
                 </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Projects */}
-        <section className="mt-12">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-[0.08em]">Your projects</h2>
-            {projects && projects.length > 0 && (
-              <span className="text-muted-foreground text-xs">{projects.length} total</span>
-            )}
-          </div>
-          {projects === null ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-36 rounded-2xl" />
               ))}
             </div>
-          ) : projects.length === 0 ? (
-            <div className="flex flex-col items-center rounded-2xl border border-dashed bg-card/50 px-6 py-14 text-center">
-              <CleveMark className="h-12 w-auto animate-blob" blink />
-              <div className="mt-4 font-medium">No projects yet</div>
-              <p className="mt-1 max-w-sm text-muted-foreground text-sm">
-                Start a new paper from a template, or import an existing LaTeX project as a .zip.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {projects.map((p) => (
-                <div
-                  key={p.id}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-xs/5 transition-all hover:-translate-y-0.5 hover:shadow-soft"
-                >
-                  <button type="button" onClick={() => router.push(`/p/${p.id}`)} className="text-left">
-                    <div className={cn("relative h-20 bg-gradient-to-br", ACCENTS[p.accent % ACCENTS.length])}>
-                      <BookOpenText className="absolute bottom-3 left-4 size-5 text-black/30 dark:text-white/40" />
-                    </div>
-                    <div className="p-4 pr-12">
-                      <div className="truncate font-medium">{p.name}</div>
-                      <div className="mt-0.5 text-muted-foreground text-xs">
-                        {p.mainFile} · edited {timeAgo(p.updatedAt)}
-                      </div>
-                    </div>
-                  </button>
-                  <div className="absolute right-2.5 bottom-3">
-                    <Menu>
-                      <MenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Project actions" />}>
-                        <MoreHorizontal />
-                      </MenuTrigger>
-                      <MenuPopup align="end">
-                        <MenuItem onClick={() => setRenaming(p)}>
-                          <PenLine /> Rename
-                        </MenuItem>
-                        <MenuItem onClick={() => duplicate(p)}>
-                          <Copy /> Duplicate
-                        </MenuItem>
-                        <MenuSeparator />
-                        <MenuItem
-                          variant="destructive"
-                          onClick={async () => {
-                            if (!confirm(`Delete “${p.name}”? This can't be undone.`)) return;
-                            await deleteProject(p.id);
-                            refresh();
-                          }}
-                        >
-                          <Trash2 /> Delete
-                        </MenuItem>
-                      </MenuPopup>
-                    </Menu>
+          </div>
+        ) : (
+          <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4">
+            {projects.map((p) => (
+              <div key={p.id} className="group relative">
+                <Link href={`/p/${p.id}`} className="block">
+                  <div className="aspect-[4/3] overflow-hidden rounded-xl border bg-paper px-5 pt-5 transition-transform group-hover:-translate-y-0.5">
+                    <PagePreview title={p.name} />
                   </div>
+                  <div className="mt-2.5 truncate pr-8 font-medium text-sm">{p.name}</div>
+                  <div className="text-muted-foreground text-xs">{timeAgo(p.updatedAt)}</div>
+                </Link>
+                <div className="absolute right-0 bottom-1">
+                  <Menu>
+                    <MenuTrigger render={<Button variant="ghost" size="icon-xs" aria-label={`Actions for ${p.name}`} />}>
+                      <MoreHorizontal />
+                    </MenuTrigger>
+                    <MenuPopup align="end">
+                      <MenuItem onClick={() => setRenaming(p)}>
+                        <PenLine /> Rename
+                      </MenuItem>
+                      <MenuItem onClick={() => duplicate(p)}>
+                        <Copy /> Duplicate
+                      </MenuItem>
+                      <MenuSeparator />
+                      <MenuItem
+                        variant="destructive"
+                        onClick={async () => {
+                          if (!confirm(`Delete “${p.name}”? This can't be undone.`)) return;
+                          await deleteProject(p.id);
+                          refresh();
+                        }}
+                      >
+                        <Trash2 /> Delete
+                      </MenuItem>
+                    </MenuPopup>
+                  </Menu>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <footer className="mt-20 flex flex-wrap items-center justify-between gap-2 border-t pt-6 text-muted-foreground text-xs">
-          <span className="inline-flex items-center gap-1.5">
-            <CleveMark className="h-3.5 w-auto" /> clevex · by the cleave.ai team
-          </span>
-          <span>Projects are stored in this browser. Export a .zip from the editor to back them up.</span>
-        </footer>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
       <ConnectDialog

@@ -27,7 +27,7 @@ Projects live in your browser (IndexedDB). Export a `.zip` to back them up.
 
 ```bash
 pnpm install
-pnpm dev          # http://localhost:3000
+pnpm dev          # http://localhost:3000 (landing) · /app (projects)
 ```
 
 Install Tectonic for fast, private local compiles (`brew install tectonic`).

@@ -96,7 +96,7 @@ export function Workspace({ projectId }: { projectId: string }) {
       const p = await getProject(projectId);
       if (!alive) return;
       if (!p) {
-        router.replace("/");
+        router.replace("/app");
         return;
       }
       const fs = await listFiles(projectId);
@@ -447,7 +447,7 @@ export function Workspace({ projectId }: { projectId: string }) {
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
       {/* Top bar */}
       <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-2.5">
-        <Link href="/" className="group flex items-center gap-1 rounded-lg px-1.5 py-1 hover:bg-accent" aria-label="All projects">
+        <Link href="/app" className="group flex items-center gap-1 rounded-lg px-1.5 py-1 hover:bg-accent" aria-label="All projects">
           <ChevronLeft className="size-3.5 text-muted-foreground transition-transform group-hover:-translate-x-0.5" />
           <CleveMark className="h-5 w-auto" />
         </Link>

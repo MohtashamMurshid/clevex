@@ -14,7 +14,8 @@ export async function proxy(request: NextRequest) {
   const password = process.env.CLEVEX_PASSWORD;
   if (!password) return NextResponse.next();
   const { pathname } = request.nextUrl;
-  if (pathname === "/login" || pathname === "/api/login") return NextResponse.next();
+  // The marketing page and its assets stay public.
+  if (pathname === "/" || pathname === "/login" || pathname === "/api/login") return NextResponse.next();
   const cookie = request.cookies.get(COOKIE)?.value;
   if (cookie && cookie === (await gateToken(password))) return NextResponse.next();
   if (pathname.startsWith("/api/")) {
@@ -27,5 +28,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|brand/).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|brand/|marketing/).*)"],
 };
