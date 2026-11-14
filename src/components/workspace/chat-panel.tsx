@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { CleveMark, ProviderGlyph } from "@/components/brand";
 import { Button } from "@/components/ui/button";
-import { Menu, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
 import { streamCompletion } from "@/lib/ai/client";
 import { applyBlock, splitSegments, type EditBlock } from "@/lib/ai/edits";
@@ -279,13 +279,15 @@ export function ChatPanel(props: Props) {
             <History />
           </MenuTrigger>
           <MenuPopup align="end" className="max-h-80 w-72">
-            <MenuGroupLabel>Chats in this project</MenuGroupLabel>
-            {threads.length === 0 && <div className="px-2 py-1.5 text-muted-foreground text-xs">No chats yet</div>}
-            {threads.map((t) => (
-              <MenuItem key={t.id} onClick={() => setThread(t)} className={cn(t.id === thread?.id && "bg-accent")}>
-                <span className="truncate">{t.title}</span>
-              </MenuItem>
-            ))}
+            <MenuGroup>
+              <MenuGroupLabel>Chats in this project</MenuGroupLabel>
+              {threads.length === 0 && <div className="px-2 py-1.5 text-muted-foreground text-xs">No chats yet</div>}
+              {threads.map((t) => (
+                <MenuItem key={t.id} onClick={() => setThread(t)} className={cn(t.id === thread?.id && "bg-accent")}>
+                  <span className="truncate">{t.title}</span>
+                </MenuItem>
+              ))}
+            </MenuGroup>
             {thread && (
               <>
                 <MenuSeparator />

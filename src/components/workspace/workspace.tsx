@@ -24,7 +24,7 @@ import { ConnectDialog, ConnectionPills } from "@/components/connect-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
-import { Menu, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
@@ -514,19 +514,21 @@ export function Workspace({ projectId }: { projectId: string }) {
                 <FileArchive /> Export project (.zip)
               </MenuItem>
               <MenuSeparator />
-              <MenuGroupLabel>Engine (cloud compile)</MenuGroupLabel>
-              <MenuRadioGroup
-                value={project.compiler}
-                onValueChange={(v) => {
-                  const p = { ...project, compiler: v as Project["compiler"] };
-                  setProject(p);
-                  saveProject(p);
-                }}
-              >
-                <MenuRadioItem value="pdflatex">pdfLaTeX</MenuRadioItem>
-                <MenuRadioItem value="xelatex">XeLaTeX</MenuRadioItem>
-                <MenuRadioItem value="lualatex">LuaLaTeX</MenuRadioItem>
-              </MenuRadioGroup>
+              <MenuGroup>
+                <MenuGroupLabel>Engine (cloud compile)</MenuGroupLabel>
+                <MenuRadioGroup
+                  value={project.compiler}
+                  onValueChange={(v) => {
+                    const p = { ...project, compiler: v as Project["compiler"] };
+                    setProject(p);
+                    saveProject(p);
+                  }}
+                >
+                  <MenuRadioItem value="pdflatex">pdfLaTeX</MenuRadioItem>
+                  <MenuRadioItem value="xelatex">XeLaTeX</MenuRadioItem>
+                  <MenuRadioItem value="lualatex">LuaLaTeX</MenuRadioItem>
+                </MenuRadioGroup>
+              </MenuGroup>
               <MenuSeparator />
               <MenuItem onClick={() => updateSettings({ autoCompile: !settings.autoCompile })}>
                 {settings.autoCompile ? <ZapOff /> : <Zap />} {settings.autoCompile ? "Turn off auto-compile" : "Turn on auto-compile"}
