@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in clevex doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please **don't paste tokens, API keys or `auth.json` contents** here.
+        Security issues go through [private vulnerability reporting](../security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a "Research paper" project
+        2. Press ⌘K with a paragraph selected
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where are you running clevex?
+      options:
+        - Locally (pnpm dev)
+        - Self-hosted on Vercel
+        - Self-hosted elsewhere
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Editor
+        - Compile / PDF
+        - AI chat or ⌘K
+        - Connecting ChatGPT / Claude
+        - Accounts / projects / sync
+        - Docs
+        - Other
+  - type: input
+    id: env
+    attributes:
+      label: Browser and OS
+      placeholder: Chrome 140 on macOS 16
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Browser console, compile log, or server output. Remove anything secret first.

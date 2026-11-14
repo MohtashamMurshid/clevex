@@ -1,134 +1,132 @@
-<img src="assets/icon.svg" width="64" height="64" alt="">
+<p align="center">
+  <img src="assets/icon.svg" width="72" height="72" alt="clevex logo">
+</p>
 
-# clevex
+<h1 align="center">clevex</h1>
 
-An AI-native LaTeX workspace (in the spirit of OpenAI's Prism) that runs on the
-**ChatGPT and Claude subscriptions you already pay for**. A cleave.ai side
-project, styled with the Cleve design system.
+<p align="center">
+  An AI-native LaTeX workspace that runs on the <b>ChatGPT and Claude subscriptions you already pay for</b>.
+</p>
 
-- **Editor**: CodeMirror 6 with LaTeX highlighting, autocomplete for commands,
-  environments, `\ref` labels and `\cite` keys, inline compile errors.
-- **Live PDF**: compiles on save (⌘S) or automatically while you type. Uses
-  local [Tectonic](https://tectonic-typesetting.github.io/) when installed,
-  otherwise a LaTeX-on-HTTP service (works on Vercel).
-- **AI chat** that sees every file in the project and proposes edits as diffs
-  you can apply, dismiss or undo. Pick GPT or Claude models and a reasoning
-  effort level.
-- **⌘K inline edits**: select text, describe the change, accept or retry.
-- **Fix with AI**: one click sends compile errors and the log to the model.
-- **Citations**: search arXiv and add BibTeX to your `.bib` in one click.
-- **Images → LaTeX**: paste a photo of a whiteboard or handwriting into chat.
-- **Voice dictation**, outline view, word count, multi-file projects, `.zip`
-  import/export, light and dark themes, mobile layout.
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-d16e3f"></a>
+  <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-131110">
+  <img alt="Convex" src="https://img.shields.io/badge/backend-Convex-131110">
+  <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-d16e3f"></a>
+</p>
 
-Accounts use [Better Auth](https://better-auth.com) (email + password) on
-[Convex](https://convex.dev), and projects, files and chats sync to your
-account. ChatGPT/Claude tokens never leave the browser.
+<p align="center">
+  <a href="docs/getting-started.md">Getting started</a> ·
+  <a href="docs/user-guide.md">User guide</a> ·
+  <a href="docs/providers.md">Connecting ChatGPT &amp; Claude</a> ·
+  <a href="docs/self-hosting.md">Self-hosting</a> ·
+  <a href="docs/architecture.md">Architecture</a>
+</p>
 
-## Run it
+![The clevex workspace: file tree, LaTeX editor, live PDF preview and an AI chat that proposes edits as diffs](public/marketing/workspace.jpg)
+
+clevex is an open-source editor for LaTeX papers with an AI collaborator built
+in. Write in a real code editor, watch the PDF update next to it, and ask GPT or
+Claude to rewrite a paragraph, fix a compile error or find a citation. The model
+sees the whole project and proposes changes as diffs you can apply or undo.
+
+It started as a side project at [Cleve](https://www.cleve.ai) and uses the Cleve
+design system.
+
+## Features
+
+| | |
+| --- | --- |
+| **Editor** | CodeMirror 6 with LaTeX highlighting, autocomplete for commands, environments, `\ref` labels and `\cite` keys, and compile errors shown inline. |
+| **Live PDF** | Compiles on ⌘S or while you type. Uses [Tectonic](https://tectonic-typesetting.github.io/) when it's installed and falls back to a LaTeX-on-HTTP service, so it also works on Vercel. |
+| **AI chat** | Sees every file in the project and proposes edits as reviewable diffs. Choose a GPT or Claude model and a reasoning effort. |
+| **⌘K inline edits** | Select text, describe the change, then accept or retry. |
+| **Fix with AI** | Sends the compile errors and log to the model in one click. |
+| **Citations** | Search arXiv and add BibTeX entries to your `.bib` file. |
+| **Images → LaTeX** | Paste a photo of a whiteboard or handwritten math into the chat. |
+| **And more** | Voice dictation, outline view, word count, multi-file projects, `.zip` import/export, templates (paper, notes, Beamer), light/dark themes, mobile layout. |
+
+**Your subscriptions, your keys.** ChatGPT and Claude credentials stay in your
+browser. The server routes are stateless proxies that forward each request with
+the caller's own token. Accounts, projects, files and chat history sync through
+[Convex](https://convex.dev) with [Better Auth](https://better-auth.com).
+
+## Quick start
+
+You need Node.js 22+, [pnpm](https://pnpm.io) 10, and a free
+[Convex](https://convex.dev) account.
 
 ```bash
+git clone https://github.com/MohtashamMurshid/clevex.git
+cd clevex
 pnpm install
-npx convex dev    # first time: links/creates the Convex dev deployment, writes .env.local
-pnpm dev          # http://localhost:3000 (landing) · /app (projects)
+npx convex dev          # first run: log in, create a project, write .env.local
 ```
 
-Keep `npx convex dev` running while you change anything in `convex/`.
+In a second terminal, set the auth variables on your new Convex dev deployment,
+then start the app:
 
-Install Tectonic for fast, private local compiles (`brew install tectonic`).
-Without it, clevex compiles through `latex.ytotech.com`.
+```bash
+npx convex env set SITE_URL http://localhost:3000
+npx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
+pnpm dev                # http://localhost:3000
+```
 
-## Connecting your subscriptions
+Create an account, open **Connect** in the top bar and sign in with ChatGPT or
+Claude. For faster, private compiles, install Tectonic (`brew install tectonic`).
 
-Open **Connect** (top right). Tokens are stored only in your browser. The
-server routes are stateless proxies that forward each request with the
-caller's own token.
+The [getting started guide](docs/getting-started.md) has the full steps and fixes
+for common problems.
 
-**ChatGPT (Plus / Pro / Business)**: *Sign in with ChatGPT* uses the same
-public OAuth client as the Codex CLI (PKCE, redirect to `localhost:1455`).
+## Documentation
 
-- Running locally, clevex catches the redirect itself and finishes sign-in.
-- On a deployed site, the browser lands on a `localhost:1455` page that won't
-  load. Copy that URL from the address bar and paste it into clevex.
-- Or import an existing Codex CLI login (`~/.codex/auth.json`). Imported
-  sessions are never refreshed by clevex, so your CLI keeps working.
-
-**Claude (Pro / Max)**: *Sign in with Claude* uses Claude Code's OAuth
-client. After you approve, Claude shows a code; paste it back. You can also
-paste a long-lived token from `claude setup-token`, import Claude Code's login
-when running locally, or use an Anthropic API key.
-
-> ⚠️ Anthropic's terms limit Claude subscription OAuth tokens to its own apps.
-> Since early 2026 it may reject them in third-party tools or bill them as extra
-> usage. If Claude replies fail, use an API key. This project is for personal
-> use.
-
-## Database and auth (Convex + Better Auth)
-
-| | Convex deployment | Used by |
-| --- | --- | --- |
-| **dev** | `quick-snake-38` | `pnpm dev`, Vercel Preview + Development |
-| **prod** | `bold-rat-721` | Vercel Production (clevex.vercel.app) |
-
-Project: `mohtasham-murshid/clevex` on the Convex dashboard.
-
-- `convex/schema.ts`: `projects`, `files` (text inline, binaries in file
-  storage), `threads` (chat history; images in file storage). Every query and
-  mutation checks that the caller owns the data.
-- `convex/auth.ts`: Better Auth with the Convex adapter and email + password.
-  `/api/auth/*` in Next proxies to Convex HTTP actions.
-- `src/proxy.ts`: sends signed-out visitors from `/app` and `/p/*` to
-  `/sign-in`, and returns 401 from the AI/compile APIs without a session.
-
-Convex deployment environment variables (`npx convex env set …`, add `--prod` for prod):
-
-| Variable | Dev | Prod |
-| --- | --- | --- |
-| `SITE_URL` | `http://localhost:3000` | `https://clevex.vercel.app` |
-| `BETTER_AUTH_SECRET` | random | random (different) |
-| `TRUSTED_ORIGINS` | `127.0.0.1` + Vercel previews | Vercel aliases |
-| `AUTH_ALLOWED_EMAILS` | (unset) | optional comma-separated allowlist to close sign-ups |
-
-## Deploy to Vercel
-
-Pushes to `main` deploy automatically. Production builds run
-`npx convex deploy --cmd 'pnpm build'` (see `vercel.json`), so Convex functions
-deploy with the app; Preview builds use the dev deployment and skip that step.
-
-Vercel environment variables:
-
-| Variable | Production | Preview / Development |
-| --- | --- | --- |
-| `CONVEX_DEPLOY_KEY` | prod deploy key | not set |
-| `NEXT_PUBLIC_CONVEX_URL` | `https://bold-rat-721.convex.cloud` | `https://quick-snake-38.convex.cloud` |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | `https://bold-rat-721.convex.site` | `https://quick-snake-38.convex.site` |
-| `NEXT_PUBLIC_SITE_URL` | `https://clevex.vercel.app` | `http://localhost:3000` (Development) |
-
-Optional app environment variables (see `.env.example`):
-
-| Variable | What it does |
+| Guide | What's in it |
 | --- | --- |
-| `CLAUDE_CODE_OAUTH_TOKEN` | A `claude setup-token` token. Lets signed-in users use your Claude plan without connecting their own. |
-| `CLEVEX_COMPILER` | `auto` (default), `tectonic`, or `remote`. |
-| `CLEVEX_LATEX_REMOTE_URL` | Your own LaTeX-on-HTTP endpoint. |
-| `CLEVEX_OPENAI_BASE_URL` / `CLEVEX_OPENAI_API_KEY` | Optional OpenAI Responses-compatible gateway (for example a self-hosted CLIProxyAPI). |
-| `CLEVEX_ANTHROPIC_BASE_URL` / `CLEVEX_ANTHROPIC_API_KEY` | Optional Anthropic Messages-compatible gateway. |
+| [Getting started](docs/getting-started.md) | Run clevex locally, step by step |
+| [User guide](docs/user-guide.md) | The workspace, AI features, keyboard shortcuts |
+| [Connecting ChatGPT & Claude](docs/providers.md) | Every sign-in option and how it works, plus caveats |
+| [Self-hosting](docs/self-hosting.md) | Deploy to Vercel with a production Convex deployment |
+| [Configuration](docs/configuration.md) | All environment variables |
+| [Architecture](docs/architecture.md) | How the pieces fit, data model, request flow |
+| [Contributing](CONTRIBUTING.md) | Dev workflow, code style, pull requests |
+| [Security](SECURITY.md) | Threat model and how to report a vulnerability |
 
-On Vercel, the "import from this computer" buttons and the local OAuth
-callback catcher are turned off automatically.
+## A note on subscription tokens
 
-## Project layout
+clevex signs in with the same public OAuth clients that the Codex CLI and Claude
+Code use. That's what lets it run on a ChatGPT or Claude plan instead of a paid
+API key, but **neither OpenAI nor Anthropic officially supports it for
+third-party apps**:
 
-```
-convex/             schema, Better Auth, and project/file/thread functions
-src/app/(app)/      signed-in pages (/app dashboard, /p/[id] editor) inside the Convex provider
-src/app/api/        auth proxy, provider token exchange, AI streaming, compile, arXiv
-src/lib/auth/       OAuth (PKCE) flows and browser credential store
-src/lib/ai/         model list, prompts, edit-block parser, streaming client
-src/components/     dashboard, connect dialog, workspace (editor, PDF, chat, sidebar)
-src/components/ui/  coss ui components (shadcn registry), themed with Cleve tokens
-```
+- Anthropic's terms limit Claude subscription OAuth tokens to Anthropic's own
+  apps. Since early 2026 it may reject them in third-party tools or bill them as
+  extra usage. If Claude replies fail, use an Anthropic API key.
+- Either provider can change these endpoints without notice.
 
-## Scripts
+Use it for personal work and read your plan's terms. If you need something
+officially supported, use API keys or the gateway options in
+[Configuration](docs/configuration.md#ai-gateways). See
+[Connecting ChatGPT & Claude](docs/providers.md) for details.
 
-`pnpm dev` · `pnpm build` · `pnpm lint` · `pnpm typecheck`
+## Tech stack
+
+[Next.js 16](https://nextjs.org) (App Router) · React 19 ·
+[Convex](https://convex.dev) · [Better Auth](https://better-auth.com) ·
+[CodeMirror 6](https://codemirror.net) · [PDF.js](https://mozilla.github.io/pdf.js/) ·
+[Tailwind CSS 4](https://tailwindcss.com) · [coss ui](https://coss.com/ui) / Base UI ·
+[Tectonic](https://tectonic-typesetting.github.io/)
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome. Read
+[CONTRIBUTING.md](CONTRIBUTING.md) first. To report a security problem, follow
+[SECURITY.md](SECURITY.md) instead of opening a public issue.
+
+## License
+
+The code is released under the [MIT License](LICENSE). The Cleve name, logo and
+marketing artwork are not covered by it. See
+[TRADEMARKS.md](TRADEMARKS.md).
+
+clevex is not affiliated with or endorsed by OpenAI or Anthropic. ChatGPT, Codex,
+Claude and Claude Code are trademarks of their respective owners.

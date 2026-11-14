@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/MohtashamMurshid/clevex/security/advisories/new
+    about: Report security issues privately, not as public issues.
+  - name: Documentation
+    url: https://github.com/MohtashamMurshid/clevex/tree/main/docs
+    about: Setup, configuration, and how clevex works.
