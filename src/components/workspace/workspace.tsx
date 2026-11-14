@@ -7,6 +7,8 @@ import { Group, Panel, Separator, type PanelImperativeHandle } from "react-resiz
 import {
   ChevronDown,
   ChevronLeft,
+  Cloud,
+  CloudOff,
   Code2,
   FileArchive,
   FileDown,
@@ -39,7 +41,6 @@ import {
   renameFile,
   saveProject,
   savePdf,
-  touchProject,
 } from "@/lib/db";
 import { collectBibKeys, collectLabels } from "@/lib/latex/outline";
 import { updateSettings, useSettings } from "@/lib/settings";
@@ -93,13 +94,26 @@ export function Workspace({ projectId }: { projectId: string }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const p = await getProject(projectId);
-      if (!alive) return;
-      if (!p) {
+      let p: Project | null;
+      let fs: ProjectFile[];
+      try {
+        p = await getProject(projectId);
+        if (!alive) return;
+        if (!p) {
+          router.replace("/app");
+          return;
+        }
+        fs = await listFiles(projectId);
+      } catch (e) {
+        if (!alive) return;
+        toastManager.add({
+          type: "error",
+          title: "Couldn't open this project",
+          description: e instanceof Error ? e.message : String(e),
+        });
         router.replace("/app");
         return;
       }
-      const fs = await listFiles(projectId);
       const stored = await loadPdf(projectId);
       if (!alive) return;
       setProject(p);
@@ -164,6 +178,28 @@ export function Workspace({ projectId }: { projectId: string }) {
     compileTimer.current = setTimeout(() => compile(), 1800);
   }, [settings.autoCompile, compile]);
 
+  // ---------- Saving to Convex ----------
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
+  const inFlight = useRef(0);
+  const persist = useCallback((op: () => Promise<unknown>) => {
+    inFlight.current++;
+    setSaveState("saving");
+    op()
+      .then(() => {
+        inFlight.current--;
+        if (inFlight.current === 0 && saveTimers.current.size === 0) setSaveState("saved");
+      })
+      .catch((e) => {
+        inFlight.current--;
+        setSaveState("error");
+        toastManager.add({
+          type: "error",
+          title: "Couldn't save your changes",
+          description: e instanceof Error ? e.message : String(e),
+        });
+      });
+  }, []);
+
   // ---------- File ops ----------
   const writeFile = useCallback(
     (path: string, content: string) => {
@@ -179,35 +215,40 @@ export function Workspace({ projectId }: { projectId: string }) {
       const timers = saveTimers.current;
       const t = timers.get(path);
       if (t) clearTimeout(t);
+      setSaveState("saving");
       timers.set(
         path,
         setTimeout(() => {
-          putFile(projectId, { path, content, updatedAt: now });
-          touchProject(projectId);
           timers.delete(path);
-        }, 350),
+          persist(() => putFile(projectId, { path, content, updatedAt: now }));
+        }, 500),
       );
       scheduleCompile();
     },
-    [projectId, scheduleCompile],
+    [projectId, scheduleCompile, persist],
   );
 
-  // Flush pending saves when leaving.
+  // Flush pending saves when leaving; warn if a save is still in flight.
   useEffect(() => {
     const flush = () => {
       for (const [path, t] of saveTimers.current) {
         clearTimeout(t);
         const f = filesRef.current.find((x) => x.path === path);
-        if (f) putFile(projectId, f);
+        if (f) persist(() => putFile(projectId, f));
       }
       saveTimers.current.clear();
     };
-    window.addEventListener("beforeunload", flush);
+    const onUnload = (e: BeforeUnloadEvent) => {
+      const unsaved = saveTimers.current.size > 0 || inFlight.current > 0;
+      flush();
+      if (unsaved) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onUnload);
     return () => {
-      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("beforeunload", onUnload);
       flush();
     };
-  }, [projectId]);
+  }, [projectId, persist]);
 
   const openFile = useCallback((path: string, line?: number) => {
     const f = filesRef.current.find((x) => x.path === path) ?? filesRef.current.find((x) => x.path.endsWith(`/${path}`));
@@ -407,35 +448,42 @@ export function Workspace({ projectId }: { projectId: string }) {
       onOpen={openFile}
       onCreate={(path, content) => {
         writeFile(path, content ?? (path.endsWith(".tex") ? `% ${path}\n` : ""));
-        putFile(project.id, { path, content: content ?? "", updatedAt: Date.now() });
         setActive(path);
       }}
       onUpload={async (incoming) => {
         const now = Date.now();
-        for (const f of incoming) await putFile(project.id, { ...f, updatedAt: now });
-        setFiles(await listFiles(project.id));
-        toastManager.add({ type: "success", title: `Added ${incoming.length} file${incoming.length > 1 ? "s" : ""}` });
-        scheduleCompile();
+        try {
+          for (const f of incoming) await putFile(project.id, { ...f, updatedAt: now });
+          setFiles(await listFiles(project.id));
+          toastManager.add({ type: "success", title: `Added ${incoming.length} file${incoming.length > 1 ? "s" : ""}` });
+          scheduleCompile();
+        } catch (e) {
+          toastManager.add({ type: "error", title: "Upload failed", description: e instanceof Error ? e.message : String(e) });
+        }
       }}
       onRename={async (from, to) => {
-        await renameFile(project.id, from, to);
-        setFiles(await listFiles(project.id));
-        if (active === from) setActive(to);
-        if (project.mainFile === from) {
-          const p = { ...project, mainFile: to };
-          setProject(p);
-          saveProject(p);
+        try {
+          await renameFile(project.id, from, to); // also moves mainFile server-side
+          setFiles(await listFiles(project.id));
+          if (active === from) setActive(to);
+          if (project.mainFile === from) setProject({ ...project, mainFile: to });
+        } catch (e) {
+          toastManager.add({ type: "error", title: "Rename failed", description: e instanceof Error ? e.message : String(e) });
         }
       }}
       onDelete={async (path) => {
-        await deleteFile(project.id, path);
-        setFiles((fs) => fs.filter((f) => f.path !== path));
-        if (active === path) setActive(project.mainFile);
+        try {
+          await deleteFile(project.id, path);
+          setFiles((fs) => fs.filter((f) => f.path !== path));
+          if (active === path) setActive(project.mainFile);
+        } catch (e) {
+          toastManager.add({ type: "error", title: "Delete failed", description: e instanceof Error ? e.message : String(e) });
+        }
       }}
       onSetMain={(path) => {
         const p = { ...project, mainFile: path, updatedAt: Date.now() };
         setProject(p);
-        saveProject(p);
+        persist(() => saveProject(p));
         scheduleCompile();
       }}
       onAppendBib={appendBib}
@@ -474,7 +522,7 @@ export function Workspace({ projectId }: { projectId: string }) {
                 const name = e.target.value.trim() || project.name;
                 const p = { ...project, name, updatedAt: Date.now() };
                 setProject(p);
-                saveProject(p);
+                persist(() => saveProject(p));
                 setEditingName(false);
                 document.title = `${name} · clevex`;
               }}
@@ -495,6 +543,27 @@ export function Workspace({ projectId }: { projectId: string }) {
             </button>
           )}
         </div>
+        <span
+          className={cn(
+            "hidden shrink-0 items-center gap-1 text-xs sm:inline-flex",
+            saveState === "error" ? "text-destructive-foreground" : "text-muted-foreground",
+          )}
+          aria-live="polite"
+        >
+          {saveState === "saving" ? (
+            <>
+              <Spinner className="size-3" /> Saving…
+            </>
+          ) : saveState === "error" ? (
+            <>
+              <CloudOff className="size-3.5" /> Not saved
+            </>
+          ) : (
+            <>
+              <Cloud className="size-3.5" /> Saved
+            </>
+          )}
+        </span>
 
         <div className="ml-auto flex items-center gap-1.5">
           {isDesktop && <ConnectionPills onOpen={(provider) => setConnect({ open: true, provider })} />}
@@ -521,7 +590,7 @@ export function Workspace({ projectId }: { projectId: string }) {
                   onValueChange={(v) => {
                     const p = { ...project, compiler: v as Project["compiler"] };
                     setProject(p);
-                    saveProject(p);
+                    persist(() => saveProject(p));
                   }}
                 >
                   <MenuRadioItem value="pdflatex">pdfLaTeX</MenuRadioItem>

@@ -8,7 +8,6 @@ export async function GET(req: Request) {
     local: isLocalRequest(req),
     serverClaude: !!serverEnv.claudeToken || !!serverEnv.anthropicGateway,
     serverChatGPT: !!serverEnv.openaiGateway,
-    passwordProtected: !!serverEnv.password,
     onVercel: serverEnv.onVercel,
   });
 }

@@ -85,7 +85,7 @@ export async function completeChatGPTLogin(input: string) {
   if (parsed.state && parsed.state !== pending.state) {
     throw new Error("That link belongs to a different sign-in attempt. Start again.");
   }
-  const res = await fetch("/api/auth/chatgpt/token", {
+  const res = await fetch("/api/providers/chatgpt/token", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ grant: "authorization_code", code: parsed.code, verifier: pending.verifier }),
@@ -136,7 +136,7 @@ export async function ensureChatGPT(): Promise<ChatGPTCredential> {
   }
   refreshing ??= (async () => {
     try {
-      const res = await fetch("/api/auth/chatgpt/token", {
+      const res = await fetch("/api/providers/chatgpt/token", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ grant: "refresh_token", refreshToken: cred.refreshToken }),

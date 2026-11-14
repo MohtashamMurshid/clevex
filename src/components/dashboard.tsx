@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Copy, FileUp, MoreHorizontal, PenLine, Plus, Trash2 } from "lucide-react";
+import { useQuery } from "convex/react";
+import { ChevronDown, Copy, FileUp, HardDriveUpload, LogOut, MoreHorizontal, PenLine, Plus, Trash2, X } from "lucide-react";
+import { api } from "../../convex/_generated/api";
 import { CleveMark } from "@/components/brand";
 import { ConnectDialog, ConnectionPills } from "@/components/connect-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -13,7 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
-import { createProject, deleteProject, listFiles, listProjects, saveProject } from "@/lib/db";
+import { authClient } from "@/lib/auth-client";
+import { createProject, deleteProject, duplicateProject, saveProject } from "@/lib/db";
+import { deleteLocalProject, listLocalFiles, listLocalProjects } from "@/lib/local-db";
 import { TEMPLATES } from "@/lib/templates";
 import type { Project, ProviderId } from "@/lib/types";
 import { guessMainFile, readUploads } from "@/lib/zip";
@@ -47,20 +51,27 @@ function PagePreview({ title }: { title: string }) {
 
 export function Dashboard() {
   const router = useRouter();
-  const [projects, setProjects] = useState<Project[] | null>(null);
+  const projects = useQuery(api.projects.list);
   const [connect, setConnect] = useState<{ open: boolean; provider: ProviderId }>({ open: false, provider: "chatgpt" });
   const [renaming, setRenaming] = useState<Project | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const refresh = useCallback(() => listProjects().then(setProjects), []);
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const fail = (title: string, e: unknown) =>
+    toastManager.add({ type: "error", title, description: e instanceof Error ? e.message : String(e) });
 
   const newFromTemplate = async (id: string) => {
-    const t = TEMPLATES.find((x) => x.id === id)!;
-    const p = await createProject({ name: id === "blank" ? "Untitled" : t.name, template: id, files: t.files });
-    router.push(`/p/${p.id}`);
+    if (busy) return;
+    setBusy(id);
+    try {
+      const t = TEMPLATES.find((x) => x.id === id)!;
+      const p = await createProject({ name: id === "blank" ? "Untitled" : t.name, template: id, files: t.files });
+      router.push(`/p/${p.id}`);
+    } catch (e) {
+      fail("Couldn't create the project", e);
+      setBusy(null);
+    }
   };
 
   const importFiles = async (list: FileList | null) => {
@@ -77,9 +88,11 @@ export function Dashboard() {
   };
 
   const duplicate = async (p: Project) => {
-    const files = await listFiles(p.id);
-    await createProject({ name: `${p.name} (copy)`, template: p.template, files, mainFile: p.mainFile });
-    refresh();
+    try {
+      await duplicateProject(p.id);
+    } catch (e) {
+      fail("Couldn't duplicate", e);
+    }
   };
 
   return (
@@ -92,6 +105,7 @@ export function Dashboard() {
         <div className="flex items-center gap-2">
           <ConnectionPills onOpen={(provider) => setConnect({ open: true, provider })} />
           <ThemeToggle />
+          <UserMenu />
         </div>
       </header>
 
@@ -128,7 +142,9 @@ export function Dashboard() {
           </div>
         </div>
 
-        {projects === null ? (
+        <LocalImportBanner onImported={(id) => router.push(`/p/${id}`)} />
+
+        {projects === undefined ? (
           <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="aspect-[4/3] rounded-xl" />
@@ -139,7 +155,13 @@ export function Dashboard() {
             <p className="text-muted-foreground text-sm">Start from a template.</p>
             <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
               {TEMPLATES.map((t) => (
-                <button type="button" key={t.id} onClick={() => newFromTemplate(t.id)} className="group text-left">
+                <button
+                  type="button"
+                  key={t.id}
+                  onClick={() => newFromTemplate(t.id)}
+                  disabled={!!busy}
+                  className="group text-left disabled:opacity-60"
+                >
                   <div className="aspect-[4/3] overflow-hidden rounded-xl border bg-paper px-5 pt-5 transition-transform group-hover:-translate-y-0.5">
                     <PagePreview title={t.name} />
                   </div>
@@ -176,8 +198,7 @@ export function Dashboard() {
                         variant="destructive"
                         onClick={async () => {
                           if (!confirm(`Delete “${p.name}”? This can't be undone.`)) return;
-                          await deleteProject(p.id);
-                          refresh();
+                          await deleteProject(p.id).catch((e) => fail("Couldn't delete", e));
                         }}
                       >
                         <Trash2 /> Delete
@@ -201,9 +222,8 @@ export function Dashboard() {
         onClose={() => setRenaming(null)}
         onSave={async (name) => {
           if (!renaming) return;
-          await saveProject({ ...renaming, name, updatedAt: Date.now() });
+          await saveProject({ ...renaming, name, updatedAt: Date.now() }).catch((e) => fail("Couldn't rename", e));
           setRenaming(null);
-          refresh();
         }}
       />
     </div>
@@ -249,5 +269,99 @@ function RenameDialog({
         </DialogFooter>
       </DialogPopup>
     </Dialog>
+  );
+}
+
+function UserMenu() {
+  const user = useQuery(api.auth.getCurrentUser);
+  if (!user) return null;
+  const initial = (user.name || user.email || "?").trim()[0]?.toUpperCase();
+  return (
+    <Menu>
+      <MenuTrigger
+        aria-label="Account"
+        className="grid size-8 place-items-center rounded-full bg-brand-subtle font-semibold text-brand-strong text-sm transition-shadow hover:ring-2 hover:ring-brand/30"
+      >
+        {initial}
+      </MenuTrigger>
+      <MenuPopup align="end" className="w-60">
+        <div className="px-2 py-1.5">
+          <div className="truncate font-medium text-sm">{user.name}</div>
+          <div className="truncate text-muted-foreground text-xs">{user.email}</div>
+        </div>
+        <MenuSeparator />
+        <MenuItem
+          onClick={async () => {
+            await authClient.signOut();
+            // Full reload so the Convex client drops the old session.
+            window.location.replace("/");
+          }}
+        >
+          <LogOut /> Sign out
+        </MenuItem>
+      </MenuPopup>
+    </Menu>
+  );
+}
+
+/** Projects created before accounts existed live in this browser; offer to move them. */
+function LocalImportBanner({ onImported }: { onImported: (id: string) => void }) {
+  const [local, setLocal] = useState<Project[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    listLocalProjects().then((ps) => alive && setLocal(ps));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (hidden || local.length === 0) return null;
+
+  const importAll = async () => {
+    setBusy(true);
+    let lastId: string | null = null;
+    let moved = 0;
+    for (const p of local) {
+      try {
+        const files = await listLocalFiles(p.id);
+        const created = await createProject({
+          name: p.name,
+          template: p.template,
+          mainFile: p.mainFile,
+          compiler: p.compiler,
+          files,
+        });
+        await deleteLocalProject(p.id);
+        lastId = created.id;
+        moved++;
+      } catch (e) {
+        toastManager.add({
+          type: "error",
+          title: `Couldn't move “${p.name}”`,
+          description: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+    setBusy(false);
+    setLocal(await listLocalProjects());
+    toastManager.add({ type: "success", title: `Moved ${moved} project${moved === 1 ? "" : "s"} to your account` });
+    if (moved === 1 && lastId) onImported(lastId);
+  };
+
+  return (
+    <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3">
+      <HardDriveUpload className="size-4 shrink-0 text-brand" />
+      <p className="min-w-0 flex-1 text-sm">
+        {local.length} project{local.length === 1 ? " is" : "s are"} saved only in this browser. Move{" "}
+        {local.length === 1 ? "it" : "them"} to your account to open {local.length === 1 ? "it" : "them"} anywhere.
+      </p>
+      <Button size="sm" variant="brand" loading={busy} onClick={importAll}>
+        Move to account
+      </Button>
+      <Button size="icon-sm" variant="ghost" aria-label="Dismiss" onClick={() => setHidden(true)}>
+        <X />
+      </Button>
+    </div>
   );
 }

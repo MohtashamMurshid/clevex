@@ -21,14 +21,19 @@ project, styled with the Cleve design system.
 - **Voice dictation**, outline view, word count, multi-file projects, `.zip`
   import/export, light and dark themes, mobile layout.
 
-Projects live in your browser (IndexedDB). Export a `.zip` to back them up.
+Accounts use [Better Auth](https://better-auth.com) (email + password) on
+[Convex](https://convex.dev), and projects, files and chats sync to your
+account. ChatGPT/Claude tokens never leave the browser.
 
 ## Run it
 
 ```bash
 pnpm install
+npx convex dev    # first time: links/creates the Convex dev deployment, writes .env.local
 pnpm dev          # http://localhost:3000 (landing) · /app (projects)
 ```
+
+Keep `npx convex dev` running while you change anything in `convex/`.
 
 Install Tectonic for fast, private local compiles (`brew install tectonic`).
 Without it, clevex compiles through `latex.ytotech.com`.
@@ -58,20 +63,52 @@ when running locally, or use an Anthropic API key.
 > usage. If Claude replies fail, use an API key. This project is for personal
 > use.
 
+## Database and auth (Convex + Better Auth)
+
+| | Convex deployment | Used by |
+| --- | --- | --- |
+| **dev** | `quick-snake-38` | `pnpm dev`, Vercel Preview + Development |
+| **prod** | `bold-rat-721` | Vercel Production (clevex.vercel.app) |
+
+Project: `mohtasham-murshid/clevex` on the Convex dashboard.
+
+- `convex/schema.ts`: `projects`, `files` (text inline, binaries in file
+  storage), `threads` (chat history; images in file storage). Every query and
+  mutation checks that the caller owns the data.
+- `convex/auth.ts`: Better Auth with the Convex adapter and email + password.
+  `/api/auth/*` in Next proxies to Convex HTTP actions.
+- `src/proxy.ts`: sends signed-out visitors from `/app` and `/p/*` to
+  `/sign-in`, and returns 401 from the AI/compile APIs without a session.
+
+Convex deployment environment variables (`npx convex env set …`, add `--prod` for prod):
+
+| Variable | Dev | Prod |
+| --- | --- | --- |
+| `SITE_URL` | `http://localhost:3000` | `https://clevex.vercel.app` |
+| `BETTER_AUTH_SECRET` | random | random (different) |
+| `TRUSTED_ORIGINS` | `127.0.0.1` + Vercel previews | Vercel aliases |
+| `AUTH_ALLOWED_EMAILS` | (unset) | optional comma-separated allowlist to close sign-ups |
+
 ## Deploy to Vercel
 
-The app is a standard Next.js 16 project. It deploys with no config:
+Pushes to `main` deploy automatically. Production builds run
+`npx convex deploy --cmd 'pnpm build'` (see `vercel.json`), so Convex functions
+deploy with the app; Preview builds use the dev deployment and skip that step.
 
-```bash
-vercel deploy
-```
+Vercel environment variables:
 
-Optional environment variables (see `.env.example`):
+| Variable | Production | Preview / Development |
+| --- | --- | --- |
+| `CONVEX_DEPLOY_KEY` | prod deploy key | not set |
+| `NEXT_PUBLIC_CONVEX_URL` | `https://bold-rat-721.convex.cloud` | `https://quick-snake-38.convex.cloud` |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | `https://bold-rat-721.convex.site` | `https://quick-snake-38.convex.site` |
+| `NEXT_PUBLIC_SITE_URL` | `https://clevex.vercel.app` | `http://localhost:3000` (Development) |
+
+Optional app environment variables (see `.env.example`):
 
 | Variable | What it does |
 | --- | --- |
-| `CLEVEX_PASSWORD` | Locks the whole site behind a password. **Set this** if you add a server token. |
-| `CLAUDE_CODE_OAUTH_TOKEN` | A `claude setup-token` token. Lets the deployment use your Claude plan without a browser login. |
+| `CLAUDE_CODE_OAUTH_TOKEN` | A `claude setup-token` token. Lets signed-in users use your Claude plan without connecting their own. |
 | `CLEVEX_COMPILER` | `auto` (default), `tectonic`, or `remote`. |
 | `CLEVEX_LATEX_REMOTE_URL` | Your own LaTeX-on-HTTP endpoint. |
 | `CLEVEX_OPENAI_BASE_URL` / `CLEVEX_OPENAI_API_KEY` | Optional OpenAI Responses-compatible gateway (for example a self-hosted CLIProxyAPI). |
@@ -83,7 +120,9 @@ callback catcher are turned off automatically.
 ## Project layout
 
 ```
-src/app/api/        stateless routes: auth token exchange, AI streaming, compile, arXiv
+convex/             schema, Better Auth, and project/file/thread functions
+src/app/(app)/      signed-in pages (/app dashboard, /p/[id] editor) inside the Convex provider
+src/app/api/        auth proxy, provider token exchange, AI streaming, compile, arXiv
 src/lib/auth/       OAuth (PKCE) flows and browser credential store
 src/lib/ai/         model list, prompts, edit-block parser, streaming client
 src/components/     dashboard, connect dialog, workspace (editor, PDF, chat, sidebar)

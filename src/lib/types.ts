@@ -5,6 +5,8 @@ export type ProjectFile = {
   /** Base64 data for binary files (images, PDFs). */
   data?: string;
   mime?: string;
+  /** Convex file storage id for binary files that have been uploaded. */
+  storageId?: string;
   updatedAt: number;
 };
 
@@ -22,7 +24,16 @@ export type Project = {
 
 export type ProviderId = "chatgpt" | "claude";
 
-export type ChatImage = { mime: string; data: string; name?: string };
+export type ChatImage = {
+  mime: string;
+  name?: string;
+  /** Base64 bytes, present for images attached in this session (sent to the model). */
+  data?: string;
+  /** Present once uploaded to Convex file storage. */
+  storageId?: string;
+  /** Signed URL for display after reload. */
+  url?: string;
+};
 
 export type ChatMessage = {
   id: string;

@@ -23,6 +23,7 @@ import {
 import { CleveMark, ProviderGlyph } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { toastManager } from "@/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
 import { streamCompletion } from "@/lib/ai/client";
 import { applyBlock, splitSegments, type EditBlock } from "@/lib/ai/edits";
@@ -114,10 +115,23 @@ export function ChatPanel(props: Props) {
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) scrollToBottom();
   }, [streaming, scrollToBottom]);
 
-  const persist = useCallback(async (t: ChatThread) => {
+  /** Show the thread immediately, then save it to Convex (uploading any new images). */
+  const persist = useCallback(async (t: ChatThread): Promise<ChatThread> => {
     setThread(t);
     setThreads((ts) => [t, ...ts.filter((x) => x.id !== t.id)]);
-    await saveThread(t);
+    try {
+      const saved = await saveThread(t);
+      setThread((cur) => (cur?.id === saved.id && cur.messages.length === saved.messages.length ? saved : cur));
+      setThreads((ts) => ts.map((x) => (x.id === saved.id && x.messages.length === saved.messages.length ? saved : x)));
+      return saved;
+    } catch (e) {
+      toastManager.add({
+        type: "error",
+        title: "Couldn't save this chat",
+        description: e instanceof Error ? e.message : String(e),
+      });
+      return t;
+    }
   }, []);
 
   const send = useCallback(
@@ -140,7 +154,7 @@ export function ChatPanel(props: Props) {
         updatedAt: ts,
       };
       const withUser: ChatThread = { ...base, messages: [...base.messages, userMsg], updatedAt: ts };
-      await persist(withUser);
+      const savedUser = await persist(withUser);
       setInput("");
       setImages([]);
       setBusy(true);
@@ -157,7 +171,8 @@ export function ChatPanel(props: Props) {
       const history = withUser.messages.map((m, i) => ({
         role: m.role,
         text: i === withUser.messages.length - 1 ? turnContext + text : m.text,
-        images: m.images,
+        // Only images attached in this session still have their bytes; older ones are display-only.
+        images: m.images?.filter((img) => img.data).map((img) => ({ mime: img.mime, data: img.data! })),
       }));
 
       const controller = new AbortController();
@@ -187,7 +202,7 @@ export function ChatPanel(props: Props) {
       };
       setStreaming(null);
       setBusy(false);
-      await persist({ ...withUser, messages: [...withUser.messages, reply], updatedAt: now() });
+      await persist({ ...savedUser, messages: [...savedUser.messages, reply], updatedAt: now() });
     },
     [busy, thread, props, includeSelection, settings.model, settings.effort, persist, scrollToBottom],
   );
@@ -424,7 +439,7 @@ export function ChatPanel(props: Props) {
                 <span key={i} className="group relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`data:${img.mime};base64,${img.data}`}
+                    src={img.data ? `data:${img.mime};base64,${img.data}` : img.url}
                     alt={img.name ?? "attachment"}
                     className="size-12 rounded-lg border object-cover"
                   />
@@ -561,7 +576,7 @@ function UserBubble({ msg }: { msg: ChatMessage }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={i}
-              src={`data:${img.mime};base64,${img.data}`}
+              src={img.data ? `data:${img.mime};base64,${img.data}` : img.url}
               alt={img.name ?? "attachment"}
               className="max-h-40 max-w-[12rem] rounded-xl border object-cover"
             />

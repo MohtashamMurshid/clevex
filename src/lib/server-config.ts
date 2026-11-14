@@ -6,7 +6,6 @@ export type ServerConfig = {
   local: boolean;
   serverClaude: boolean;
   serverChatGPT: boolean;
-  passwordProtected: boolean;
   onVercel: boolean;
 };
 
@@ -14,7 +13,6 @@ const FALLBACK: ServerConfig = {
   local: false,
   serverClaude: false,
   serverChatGPT: false,
-  passwordProtected: false,
   onVercel: false,
 };
 
